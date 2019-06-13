@@ -3,7 +3,8 @@
 #define TEST_TEST_HELPERS_H_
 
 #include <gtest/gtest.h>
-#include <tf2/LinearMath/Quaternion.h>
+#include <QQuaternion>
+#include <cmath>
 
 #define MAX_DIFF 0.05
 
@@ -11,9 +12,9 @@ template <typename T>
 static inline void normalize_quaternion(T& q0, T& q1, T& q2, T& q3) {
   T invNorm = 1 / sqrt(q0*q0 + q1*q1 + q2*q2 + q3*q3);
   T max = q0;
-  if (fabs(max) < fabs(q1)) max = q1;
-  if (fabs(max) < fabs(q2)) max = q2;
-  if (fabs(max) < fabs(q3)) max = q3;
+  if (std::fabs(max) < std::fabs(q1)) max = q1;
+  if (std::fabs(max) < std::fabs(q2)) max = q2;
+  if (std::fabs(max) < std::fabs(q3)) max = q3;
   if (max < 0) invNorm *= -1.0;
 
   q0 *= invNorm;
@@ -34,30 +35,41 @@ static inline bool quat_equal(T q0, T q1, T q2, T q3, T qr0, T qr1, T qr2, T qr3
   normalize_quaternion(q0, q1, q2, q3);
   normalize_quaternion(qr0, qr1, qr2, qr3);
 
-  return (fabs(q0 - qr0) < MAX_DIFF) &&
-         (fabs(q1 - qr1) < MAX_DIFF) &&
-         (fabs(q2 - qr2) < MAX_DIFF) &&
-         (fabs(q3 - qr3) < MAX_DIFF);
+  return (std::fabs(q0 - qr0) < MAX_DIFF) &&
+         (std::fabs(q1 - qr1) < MAX_DIFF) &&
+         (std::fabs(q2 - qr2) < MAX_DIFF) &&
+         (std::fabs(q3 - qr3) < MAX_DIFF);
+}
+
+template <typename T1, typename T2>
+static inline bool quat_equal(T1 q0, T1 q1, T1 q2, T1 q3, T2 qr0, T2 qr1, T2 qr2, T2 qr3) {
+  normalize_quaternion(q0, q1, q2, q3);
+  normalize_quaternion(qr0, qr1, qr2, qr3);
+
+  return (std::fabs(q0 - qr0) < MAX_DIFF) &&
+         (std::fabs(q1 - qr1) < MAX_DIFF) &&
+         (std::fabs(q2 - qr2) < MAX_DIFF) &&
+         (std::fabs(q3 - qr3) < MAX_DIFF);
 }
 
 template <typename T>
 static inline bool quat_eq_ex_z(T q0, T q1, T q2, T q3, T qr0, T qr1, T qr2, T qr3) {
   // assert q == qr * qz
-  tf2::Quaternion q(q1, q2, q3, q0);
-  tf2::Quaternion qr(qr1, qr2, qr3, qr0);
-  tf2::Quaternion qz = q * qr.inverse();
+  QQuaternion q(q0, q1, q2, q3);
+  QQuaternion qr(qr0, qr1, qr2, qr3);
+  QQuaternion qz = q * qr.inverted();
 
   // remove x and y components.
   qz.setX(0.0);
   qz.setY(0.0);
 
-  tf2::Quaternion qr_ = qz * qr;
+  QQuaternion qr_ = qz * qr;
 
   return quat_equal(q0, q1, q2, q3,
-      qr_.getW(),
-      qr_.getX(),
-      qr_.getY(),
-      qr_.getZ());
+      qr_.scalar(),
+      qr_.x(),
+      qr_.y(),
+      qr_.z());
 }
 
 #define ASSERT_IS_NORMALIZED_(q0, q1, q2, q3) ASSERT_TRUE(is_normalized(q0, q1, q2, q3)) << "q0: " << q0 << ", q1: " << q1 << ", q2: " << q2 << ", q3: " << q3;

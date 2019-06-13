@@ -23,9 +23,8 @@
  */
 
 #include "imu_filter_madgwick/stateless_orientation.h"
-#include <tf2/LinearMath/Matrix3x3.h>
-#include <tf2/convert.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <QGenericMatrix>
+#include <cmath>
 
 template<typename T>
 static inline void crossProduct(
@@ -52,19 +51,19 @@ static inline T normalizeVector(T& vx, T& vy, T& vz) {
 
 bool StatelessOrientation::computeOrientation(
   WorldFrame::WorldFrame frame,
-  geometry_msgs::Vector3 A,
-  geometry_msgs::Vector3 E,
-  geometry_msgs::Quaternion& orientation) {
+  QVector3D A,
+  QVector3D E,
+  QQuaternion& orientation) {
 
   float Hx, Hy, Hz;
   float Mx, My, Mz;
   float normH, invH, invA;
 
   // A: pointing up
-  float Ax = A.x, Ay = A.y, Az = A.z;
+  float Ax = A.x(), Ay = A.y(), Az = A.z();
 
   // E: pointing down/north
-  float Ex = E.x, Ey = E.y, Ez = E.z;
+  float Ex = E.x(), Ey = E.y(), Ez = E.z();
 
   // H: vector horizontal, pointing east
   // H = E x A
@@ -87,7 +86,7 @@ bool StatelessOrientation::computeOrientation(
   crossProduct(Ax, Ay, Az, Hx, Hy, Hz, Mx, My, Mz);
 
   // Create matrix for basis transformation
-  tf2::Matrix3x3 R;
+  QMatrix3x3 R;
   switch (frame) {
     case WorldFrame::NED:
       // vector space world W:
@@ -99,9 +98,9 @@ bool StatelessOrientation::computeOrientation(
       // W(0,0,1) => L(-A)
 
       // R: Transform Matrix local => world equals basis of L, because basis of W is I
-      R[0][0] = Mx;     R[0][1] = Hx;     R[0][2] = -Ax;
-      R[1][0] = My;     R[1][1] = Hy;     R[1][2] = -Ay;
-      R[2][0] = Mz;     R[2][1] = Hz;     R[2][2] = -Az;
+      R(0, 0) = Mx;     R(0, 1) = Hx;     R(0, 2) = -Ax;
+      R(1, 0) = My;     R(1, 1) = Hy;     R(1, 2) = -Ay;
+      R(2, 0) = Mz;     R(2, 1) = Hz;     R(2, 2) = -Az;
       break;
 
     case WorldFrame::NWU:
@@ -114,9 +113,9 @@ bool StatelessOrientation::computeOrientation(
       // W(0,0,1) => L(A)
 
       // R: Transform Matrix local => world equals basis of L, because basis of W is I
-      R[0][0] = Mx;     R[0][1] = -Hx;     R[0][2] = Ax;
-      R[1][0] = My;     R[1][1] = -Hy;     R[1][2] = Ay;
-      R[2][0] = Mz;     R[2][1] = -Hz;     R[2][2] = Az;
+      R(0, 0) = Mx;     R(0, 1) = -Hx;     R(0, 2) = Ax;
+      R(1, 0) = My;     R(1, 1) = -Hy;     R(1, 2) = Ay;
+      R(2, 0) = Mz;     R(2, 1) = -Hz;     R(2, 2) = Az;
       break;
 
     default:
@@ -130,39 +129,38 @@ bool StatelessOrientation::computeOrientation(
       // W(0,0,1) => L(A)
 
       // R: Transform Matrix local => world equals basis of L, because basis of W is I
-      R[0][0] = Hx;     R[0][1] = Mx;     R[0][2] = Ax;
-      R[1][0] = Hy;     R[1][1] = My;     R[1][2] = Ay;
-      R[2][0] = Hz;     R[2][1] = Mz;     R[2][2] = Az;
+      R(0, 0) = Hx;     R(0, 1) = Mx;     R(0, 2) = Ax;
+      R(1, 0) = Hy;     R(1, 1) = My;     R(1, 2) = Ay;
+      R(2, 0) = Hz;     R(2, 1) = Mz;     R(2, 2) = Az;
       break;
   }
 
   // Matrix.getRotation assumes vector rotation, but we're using
   // coordinate systems. Thus negate rotation angle (inverse).
-  tf2::Quaternion q;
-  R.getRotation(q);
-  tf2::convert(q.inverse(), orientation);
+  QQuaternion q = QQuaternion::fromRotationMatrix(R);
+  orientation = q.inverted();
   return true;
 }
 
 
 bool StatelessOrientation::computeOrientation(
   WorldFrame::WorldFrame frame,
-  geometry_msgs::Vector3 A,
-  geometry_msgs::Quaternion& orientation) {
+  QVector3D A,
+  QQuaternion& orientation) {
 
   // This implementation could be optimized regarding speed.
 
   // magnetic Field E must not be parallel to A,
   // choose an arbitrary orthogonal vector
-  geometry_msgs::Vector3 E;
-  if (fabs(A.x) > 0.1 || fabs(A.y) > 0.1) {
-      E.x = A.y;
-      E.y = A.x;
-      E.z = 0.0;
-  } else if (fabs(A.z) > 0.1) {
-      E.x = 0.0;
-      E.y = A.z;
-      E.z = A.y;
+  QVector3D E;
+  if (std::fabs(A.x()) > 0.1 || std::fabs(A.y()) > 0.1) {
+      E.setX(A.y());
+      E.setY(A.x());
+      E.setZ(0.0);
+  } else if (std::fabs(A.z()) > 0.1) {
+      E.setX(0.0);
+      E.setY(A.z());
+      E.setZ(A.y());
   } else {
       // free fall
       return false;
