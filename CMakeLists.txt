@@ -8,3 +8,4 @@ add_compile_options(
 )
 
 add_subdirectory(imu_filter_madgwick)
+add_subdirectory(usfs_calc_quat)
