@@ -7,5 +7,6 @@ add_compile_options(
     -Werror
 )
 
+add_subdirectory(imu_complementary_filter)
 add_subdirectory(imu_filter_madgwick)
 add_subdirectory(usfs_calc_quat)
