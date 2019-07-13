@@ -32,6 +32,7 @@ int main(void) {
     float last_time;
     ssize_t nbytes;
     size_t i;
+    bool initialized = false;
 
     filter.setWorldFrame(worldframe);
     filter.setAlgorithmGain(1.0);
@@ -89,6 +90,26 @@ int main(void) {
         Q_ASSERT(rdoff == sizeof(buf));
 
         float time = t_mpu / 1000000.0;
+
+        if (!initialized) {
+            if (!std::isfinite(mag[0]) || !std::isfinite(mag[1]) || !std::isfinite(mag[2])) {
+                continue;
+            }
+
+            QQuaternion init_q;
+            QVector3D qaccel(accel[0], accel[1], accel[2]);
+            QVector3D qmag(mag[0], mag[1], mag[2]);
+
+            if (!StatelessOrientation::computeOrientation(worldframe, qaccel, qmag, init_q)) {
+                fprintf(stderr, "The IMU seems to be in free fall or close to magnetic north pole, cannot determine gravity direction!\n");
+                return -1;
+            }
+
+            filter.setOrientation(init_q.scalar(), init_q.x(), init_q.y(), init_q.z());
+            last_time = time;
+            initialized = true;
+        }
+
         float dt = time - last_time;
         last_time = time;
 
