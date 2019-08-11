@@ -35,7 +35,7 @@ int main(void) {
     bool initialized = false;
 
     filter.setWorldFrame(worldframe);
-    filter.setAlgorithmGain(1.0);
+    filter.setAlgorithmGain(0.1);
     filter.setDriftBiasGain(0.0);
 
     for (;;) {
